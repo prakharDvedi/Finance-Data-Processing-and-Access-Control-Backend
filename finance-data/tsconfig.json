@@ -1,5 +1,9 @@
 {
   "compilerOptions": {
+    "baseUrl": "src",
+"paths": {
+  "@/*": ["*"]
+},
     "target": "ES2017",
     "lib": [
       "dom",
@@ -8,6 +12,7 @@
     ],
     "allowJs": false,
     "skipLibCheck": true,
+    "ignoreDeprecations": "6.0",
     "strict": false,
     "noEmit": true,
     "incremental": true,
@@ -22,6 +27,7 @@
         "name": "next"
       }
     ]
+    
   },
   "include": [
     "next-env.d.ts",
