@@ -2,16 +2,17 @@ import { loginSchema, registerSchema } from "@/schema/auth";
 import { authService } from "@/services/auth.service";
 
 export const authController = {
-  async register(req: Request) {
+  async register(req: Request): Promise<Response> {
     const body = await req.json();
-    const inputs = registerSchema.parse(body);
-    const results = await authService.register(inputs);
-    return (Response.json(results), { status: 201 });
+    const input = registerSchema.parse(body);
+    const result = await authService.register(input);
+    return Response.json(result, { status: 201 });
   },
-  async login(req: Request) {
+
+  async login(req: Request): Promise<Response> {
     const body = await req.json();
-    const inputs = loginSchema.parse(body);
-    const results = await authService.login(inputs);
-    return Response.json(results, { status: 200 });
+    const input = loginSchema.parse(body);
+    const result = await authService.login(input);
+    return Response.json(result, { status: 200 });
   },
 };
