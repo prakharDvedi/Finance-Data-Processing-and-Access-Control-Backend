@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "baseUrl": "src",
+    "types": ["node", "jest"],
 "paths": {
   "@/*": ["*"]
 },
@@ -36,7 +37,7 @@
     "**/*.mts",
     "**/*.ts",
     "**/*.tsx"
-  ],
+, "jest.config.cjs"  ],
   "exclude": [
     "node_modules"
   ]
