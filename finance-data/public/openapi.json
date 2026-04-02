@@ -167,6 +167,92 @@
           }
         }
       }
+    },
+    "/api/records/{id}": {
+      "get": {
+        "tags": ["Records"],
+        "summary": "get record by id (ANALYST, ADMIN)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "record fetched"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "403": {
+            "description": "forbidden"
+          },
+          "404": {
+            "description": "record not found"
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Records"],
+        "summary": "update record (ADMIN only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RecordInput" },
+              "example": {
+                "amount": 1400,
+                "type": "INCOME",
+                "category": "Salary",
+                "date": "2026-04-03T00:00:00.000Z",
+                "notes": "updated note"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "record updated"
+          },
+          "400": {
+            "description": "validation error"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "403": {
+            "description": "forbidden"
+          },
+          "404": {
+            "description": "record not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Records"],
+        "summary": "soft delete record (ADMIN only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "record soft deleted"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "403": {
+            "description": "forbidden"
+          },
+          "404": {
+            "description": "record not found"
+          }
+        }
+      }
     }
   }
 }
