@@ -65,8 +65,8 @@ Each layer only talks to the one below it. Controllers never touch the database.
 ### 1. Clone and install
 
 ```bash
-git clone <repo-url>
-cd zorvyn
+git clone
+cd finance-data
 npm install
 ```
 
