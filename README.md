@@ -8,3 +8,7 @@ the tech stack used is
 - jsonwebtoken
 - tailwind
 - bcrypt
+
+
+a dashboard where people will be able to view summary, trends and recent updations etc
+admin has more access so can do more

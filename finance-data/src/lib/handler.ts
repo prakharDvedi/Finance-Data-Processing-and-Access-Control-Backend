@@ -1,3 +1,5 @@
+import { ZodError } from "zod";
+
 type ApiError = {
   status: number;
   message: string;
@@ -5,15 +7,26 @@ type ApiError = {
 };
 
 export function handleRoute(
-  handler: (req: Request, context?: any) => Promise<Response>
+  handler: (req: Request, context?: any) => Promise<Response>,
 ) {
   return async (req: Request, context?: any): Promise<Response> => {
     try {
       return await handler(req, context);
     } catch (err: any) {
+      if (err instanceof ZodError) {
+        return Response.json(
+          {
+            error: {
+              message: "Validation failed",
+              code: "VALIDATION_ERROR",
+              details: err.flatten(),
+            },
+          },
+          { status: 400 },
+        );
+      }
       const status = err?.status ?? 500;
-      const message =
-        err?.message ?? "Internal server error";
+      const message = err?.message ?? "Internal server error";
       const code = err?.code;
 
       const body = { error: { message, code } };
