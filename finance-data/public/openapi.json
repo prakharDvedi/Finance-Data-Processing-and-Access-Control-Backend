@@ -1,0 +1,112 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "finance data processing and acces control api",
+    "version": "1.0.0",
+    "description": "backend apis for auth, records, dashboard and user managment with rbac"
+  },
+  "servers": [{ "url": "http://localhost:3000", "description": "local" }],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "RegisterInput": {
+        "type": "object",
+        "required": ["name", "email", "password"],
+        "properties": {
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "minLength": 6 }
+        }
+      },
+      "LoginInput": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" }
+        }
+      },
+      "RecordInput": {
+        "type": "object",
+        "required": ["amount", "type", "category", "date"],
+        "properties": {
+          "amount": { "type": "number" },
+          "type": { "type": "string", "enum": ["INCOME", "EXPENSE"] },
+          "category": { "type": "string" },
+          "date": { "type": "string", "format": "date-time" },
+          "notes": { "type": "string" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/register": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "registers a new user -> default role",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterInput" },
+              "example": {
+                "name": "John Doe",
+                "email": "john@example.com",
+                "password": "password123"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "user registerd"
+          },
+          "400": {
+            "description": "validation error"
+          },
+          "409": {
+            "description": "email already exists"
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "login and get JWT token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginInput" },
+              "example": {
+                "email": "admin@example.com",
+                "password": "password123"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "login successful"
+          },
+          "400": {
+            "description": "validation error"
+          },
+          "401": {
+            "description": "wrong credentials"
+          },
+          "403": {
+            "description": "user is inactive"
+          }
+        }
+      }
+    }
+  }
+}
