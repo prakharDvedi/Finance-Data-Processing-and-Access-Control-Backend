@@ -108,4 +108,51 @@ describe("Auth integration", () => {
 
     expect(createRes.status).toBe(403);
   });
+
+  test("admin can create, read, update, and soft delete record", async () => {
+    const adminLogin = await request(BASE_URL).post("/api/auth/login").send({
+      email: "admin@example.com",
+      password: "password123",
+    });
+    expect(adminLogin.status).toBe(200);
+    const adminToken = adminLogin.body.token as string;
+
+    // create a record
+    const createRes = await request(BASE_URL)
+      .post("/api/records")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        amount: 2000,
+        type: "INCOME",
+        category: "Consulting",
+        date: new Date().toISOString(),
+        notes: "admin created",
+      });
+
+    expect(createRes.status).toBe(201);
+    const recordId = createRes.body.id as string;
+    expect(recordId).toBeTruthy();
+
+    // reads
+    const getRes = await request(BASE_URL)
+      .get(`/api/records/${recordId}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(getRes.status).toBe(200);
+
+    // updates
+    const patchRes = await request(BASE_URL)
+      .patch(`/api/records/${recordId}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ notes: "updated by admin test" });
+
+    expect(patchRes.status).toBe(200);
+    expect(patchRes.body.notes).toBe("updated by admin test");
+
+    // deletes -> soft delete
+    const deleteRes = await request(BASE_URL)
+      .delete(`/api/records/${recordId}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    expect(deleteRes.status).toBe(200);
+  });
 });
