@@ -2,7 +2,7 @@ import request from "supertest";
 
 const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:3000";
 
-describe("Auth integration", () => {
+describe("Finance backend integration", () => {
   test("register + login returns JWT", async () => {
     const email = `user_${Date.now()}@example.com`;
 
@@ -29,7 +29,7 @@ describe("Auth integration", () => {
   });
 
   test("viewer is blocked from creating a record", async () => {
-    // to check viewe role cannot create records we will register a new user and not assign any role so it will be viewer by default then try to create record with that user and it should fail with 403
+    // register a fresh user, default role is VIEWER, then try creating a record
     const email = `viewer_${Date.now()}@example.com`;
     const password = "password123";
 
@@ -40,14 +40,12 @@ describe("Auth integration", () => {
         email,
         password,
       });
-
     expect(registerRes.status).toBe(201);
 
     const loginRes = await request(BASE_URL).post("/api/auth/login").send({
       email,
       password,
     });
-
     expect(loginRes.status).toBe(200);
     const viewToken = loginRes.body.token as string;
 
@@ -66,21 +64,7 @@ describe("Auth integration", () => {
   });
 
   test("analyst can read records but cannot create", async () => {
-    const email = `analyst_${Date.now()}@example.com`;
-    const password = "password123";
-
-    // register -> default role is viewer -> login -> get token -> try to list records (should work) -> try to create record (should fail)
-    const registerRes = await request(BASE_URL)
-      .post("/api/auth/register")
-      .send({
-        name: "Analyst User",
-        email,
-        password,
-      });
-    expect(registerRes.status).toBe(201);
-
-    // promote to ANALYST directly in DB via existing admin endpoint is not possible here,
-    // so im  using analyst account for  test
+    // using seeded analyst account directly
     const loginRes = await request(BASE_URL).post("/api/auth/login").send({
       email: "analyst@example.com",
       password: "password123",
@@ -89,12 +73,13 @@ describe("Auth integration", () => {
 
     const analystToken = loginRes.body.token as string;
 
+    // analyst should be able to list
     const listRes = await request(BASE_URL)
       .get("/api/records?page=1&limit=10")
       .set("Authorization", `Bearer ${analystToken}`);
-
     expect(listRes.status).toBe(200);
 
+    // but not create
     const createRes = await request(BASE_URL)
       .post("/api/records")
       .set("Authorization", `Bearer ${analystToken}`)
@@ -105,7 +90,6 @@ describe("Auth integration", () => {
         date: new Date().toISOString(),
         notes: "analyst create attempt",
       });
-
     expect(createRes.status).toBe(403);
   });
 
@@ -117,7 +101,7 @@ describe("Auth integration", () => {
     expect(adminLogin.status).toBe(200);
     const adminToken = adminLogin.body.token as string;
 
-    // create a record
+    // create
     const createRes = await request(BASE_URL)
       .post("/api/records")
       .set("Authorization", `Bearer ${adminToken}`)
@@ -128,31 +112,95 @@ describe("Auth integration", () => {
         date: new Date().toISOString(),
         notes: "admin created",
       });
-
     expect(createRes.status).toBe(201);
     const recordId = createRes.body.id as string;
     expect(recordId).toBeTruthy();
 
-    // reads
+    // read
     const getRes = await request(BASE_URL)
       .get(`/api/records/${recordId}`)
       .set("Authorization", `Bearer ${adminToken}`);
     expect(getRes.status).toBe(200);
 
-    // updates
+    // update
     const patchRes = await request(BASE_URL)
       .patch(`/api/records/${recordId}`)
       .set("Authorization", `Bearer ${adminToken}`)
       .send({ notes: "updated by admin test" });
-
     expect(patchRes.status).toBe(200);
     expect(patchRes.body.notes).toBe("updated by admin test");
 
-    // deletes -> soft delete
+    // soft delete
     const deleteRes = await request(BASE_URL)
       .delete(`/api/records/${recordId}`)
       .set("Authorization", `Bearer ${adminToken}`);
-
     expect(deleteRes.status).toBe(200);
+    expect(deleteRes.body.message).toBe("Record removed");
+  });
+
+  test("dashboard summary returns expected aggregation fields", async () => {
+    const adminLogin = await request(BASE_URL).post("/api/auth/login").send({
+      email: "admin@example.com",
+      password: "password123",
+    });
+    expect(adminLogin.status).toBe(200);
+    const adminToken = adminLogin.body.token as string;
+
+    const summaryRes = await request(BASE_URL)
+      .get("/api/dashboard/summary")
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    expect(summaryRes.status).toBe(200);
+    expect(summaryRes.body).toHaveProperty("total_income");
+    expect(summaryRes.body).toHaveProperty("total_expense");
+    expect(summaryRes.body).toHaveProperty("net");
+    expect(summaryRes.body).toHaveProperty("byCategory");
+    expect(Array.isArray(summaryRes.body.byCategory)).toBe(true);
+  });
+
+  test("soft deleted record is hidden from get and list", async () => {
+    const adminLogin = await request(BASE_URL).post("/api/auth/login").send({
+      email: "admin@example.com",
+      password: "password123",
+    });
+    expect(adminLogin.status).toBe(200);
+    const adminToken = adminLogin.body.token as string;
+
+    // create a record specifically to delete
+    const createRes = await request(BASE_URL)
+      .post("/api/records")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        amount: 999,
+        type: "EXPENSE",
+        category: "TestDelete",
+        date: new Date().toISOString(),
+        notes: "to be soft deleted",
+      });
+    expect(createRes.status).toBe(201);
+    const recordId = createRes.body.id as string;
+
+    // soft delete it
+    const deleteRes = await request(BASE_URL)
+      .delete(`/api/records/${recordId}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(deleteRes.status).toBe(200);
+
+    // should not be found by id anymore
+    const getRes = await request(BASE_URL)
+      .get(`/api/records/${recordId}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(getRes.status).toBe(404);
+
+    // should not appear in list either
+    const listRes = await request(BASE_URL)
+      .get("/api/records?page=1&limit=100")
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(listRes.status).toBe(200);
+
+    const found = (listRes.body.items || []).find(
+      (r: { id: string }) => r.id === recordId,
+    );
+    expect(found).toBeUndefined();
   });
 });
