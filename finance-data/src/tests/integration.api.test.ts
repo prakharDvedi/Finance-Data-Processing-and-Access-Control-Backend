@@ -64,4 +64,48 @@ describe("Auth integration", () => {
 
     expect(createRes.status).toBe(403);
   });
+
+  test("analyst can read records but cannot create", async () => {
+    const email = `analyst_${Date.now()}@example.com`;
+    const password = "password123";
+
+    // register -> default role is viewer -> login -> get token -> try to list records (should work) -> try to create record (should fail)
+    const registerRes = await request(BASE_URL)
+      .post("/api/auth/register")
+      .send({
+        name: "Analyst User",
+        email,
+        password,
+      });
+    expect(registerRes.status).toBe(201);
+
+    // promote to ANALYST directly in DB via existing admin endpoint is not possible here,
+    // so im  using analyst account for  test
+    const loginRes = await request(BASE_URL).post("/api/auth/login").send({
+      email: "analyst@example.com",
+      password: "password123",
+    });
+    expect(loginRes.status).toBe(200);
+
+    const analystToken = loginRes.body.token as string;
+
+    const listRes = await request(BASE_URL)
+      .get("/api/records?page=1&limit=10")
+      .set("Authorization", `Bearer ${analystToken}`);
+
+    expect(listRes.status).toBe(200);
+
+    const createRes = await request(BASE_URL)
+      .post("/api/records")
+      .set("Authorization", `Bearer ${analystToken}`)
+      .send({
+        amount: 1200,
+        type: "INCOME",
+        category: "Salary",
+        date: new Date().toISOString(),
+        notes: "analyst create attempt",
+      });
+
+    expect(createRes.status).toBe(403);
+  });
 });
