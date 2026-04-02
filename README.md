@@ -12,3 +12,7 @@ the tech stack used is
 
 a dashboard where people will be able to view summary, trends and recent updations etc
 admin has more access so can do more
+
+
+the admin has access to update roles 
+Admin User Management APIs.
