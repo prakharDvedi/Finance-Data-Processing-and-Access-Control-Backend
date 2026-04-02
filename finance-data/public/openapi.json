@@ -253,6 +253,76 @@
           }
         }
       }
+    },
+    "/api/dashboard/summary": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "dashboard summary (VIEWER, ANALYST, ADMIN)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "summary fetched"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        }
+      }
+    },
+    "/api/dashboard/recent": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "recent records for dashboard",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 5 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "recent records fetched"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        }
+      }
+    },
+    "/api/dashboard/trends": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "monthly trends for dashboard",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "months",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 6 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "trends fetched"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        }
+      }
     }
   }
 }
