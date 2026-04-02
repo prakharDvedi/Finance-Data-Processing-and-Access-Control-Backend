@@ -1,135 +1,221 @@
-This is Finance Data Processing assignment for Zorvyn
+# Zorvyn — Financial Records Management API with RBAC
 
-the tech stack used is
+Backend API for managing financial records with role-based access control, dashboard analytics, and JWT authentication.
 
-- Next
-- React
-- Prisma
-- zod
-- jsonwebtoken
-- tailwind
-- bcrypt
+Built as part of an intern assignment.
 
-a dashboard where people will be able to view summary, trends and recent updations etc
-admin has more access so can do more
+---
 
-the admin has access to update roles
-Admin User Management APIs.
+## Tech Stack
 
-ALL Apis
+- **Runtime**: Next.js (App Router, API routes only)
+- **Language**: TypeScript
+- **Database**: PostgreSQL (via Docker)
+- **ORM**: Prisma
+- **Auth**: JWT (jsonwebtoken + bcryptjs)
+- **Validation**: Zod
+- **Testing**: Jest + Supertest
 
-Use this full checklist in Postman.
+---
 
-**Auth**
+## Design Decisions
 
-1. `POST /api/auth/register`
+**Register always creates VIEWER** — accepting a role in the register payload would let anyone make themselves admin. Role changes go through the admin endpoint only.
 
-- Body:
+**Soft delete instead of hard delete** — financial data shouldn't disappear. `isDeleted` flag hides records from all reads but keeps them in the DB for audit purposes.
+
+**Access token only, no refresh token** — kept it simple for the assignment scope. Adding refresh tokens later would mean a `/auth/refresh` endpoint and a token rotation strategy.
+
+**Decimal for money** — JavaScript floats have precision issues (`0.1 + 0.2 !== 0.3`). Prisma Decimal maps to Postgres `numeric` which handles money correctly.
+
+**Integration tests over unit tests** — with limited time, testing the full request flow (HTTP → DB → response) catches more real bugs than mocking individual layers.
+
+---
+
+## Project Structure
+
+```
+src/
+├── app/api/          # Route handlers (thin, just call controllers)
+├── controllers/      # Parse input, call services, shape responses
+├── services/         # Business logic, RBAC enforcement
+├── repositories/     # Database queries only (Prisma)
+├── schema/           # Zod validation schemas
+├── lib/              # JWT, password hashing, auth helpers, error wrapper
+└── middleware/        # (reserved for future use)
+```
+
+The app follows a strict layered architecture:
+
+```
+Route → Controller → Service → Repository → DB
+```
+
+Each layer only talks to the one below it. Controllers never touch the database. Repositories never know about HTTP.
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- Docker (for Postgres)
+
+### 1. Clone and install
+
+```bash
+git clone <repo-url>
+cd zorvyn
+npm install
+```
+
+### 2. Start Postgres
+
+```bash
+docker compose up -d
+```
+
+### 3. Set up environment
+
+Create a `.env` file in the project root:
+
+```env
+DATABASE_URL="postgresql://zorvyn:zorvyn123@localhost:5432/zorvyn_db"
+JWT_SECRET="pick-any-long-random-string"
+JWT_EXPIRES_IN="1h"
+```
+
+### 4. Run migrations and seed
+
+```bash
+npx prisma migrate dev --name init
+npx prisma db seed
+```
+
+### 5. Start the server
+
+```bash
+npm run dev
+```
+
+Runs at `http://localhost:3000`.
+
+---
+
+## Test Credentials
+
+| Role    | Email               | Password    |
+| ------- | ------------------- | ----------- |
+| Admin   | admin@example.com   | password123 |
+| Analyst | analyst@example.com | password123 |
+| Viewer  | viewer@example.com  | password123 |
+
+---
+
+## API Endpoints
+
+### Auth (public)
+
+| Method | Endpoint             | Description              |
+| ------ | -------------------- | ------------------------ |
+| POST   | `/api/auth/register` | Register (always VIEWER) |
+| POST   | `/api/auth/login`    | Login, returns JWT       |
+
+### Records
+
+| Method | Endpoint           | Roles          | Notes          |
+| ------ | ------------------ | -------------- | -------------- |
+| POST   | `/api/records`     | ADMIN          | Create record  |
+| GET    | `/api/records`     | ANALYST, ADMIN | List + filters |
+| GET    | `/api/records/:id` | ANALYST, ADMIN | Get single     |
+| PATCH  | `/api/records/:id` | ADMIN          | Partial update |
+| DELETE | `/api/records/:id` | ADMIN          | Soft delete    |
+
+**Query params for GET /api/records**: `type`, `category`, `dateFrom`, `dateTo`, `page`, `limit`
+
+### Dashboard
+
+| Method | Endpoint                 | Roles                  |
+| ------ | ------------------------ | ---------------------- |
+| GET    | `/api/dashboard/summary` | VIEWER, ANALYST, ADMIN |
+| GET    | `/api/dashboard/recent`  | VIEWER, ANALYST, ADMIN |
+| GET    | `/api/dashboard/trends`  | VIEWER, ANALYST, ADMIN |
+
+`recent` accepts `?limit=5` (default 5, max 50).
+`trends` accepts `?months=6` (default 6, max 24).
+
+### User Management
+
+| Method | Endpoint                | Roles |
+| ------ | ----------------------- | ----- |
+| GET    | `/api/users`            | ADMIN |
+| PATCH  | `/api/users/:id/role`   | ADMIN |
+| PATCH  | `/api/users/:id/status` | ADMIN |
+
+---
+
+## RBAC Matrix
+
+|           | VIEWER | ANALYST | ADMIN     |
+| --------- | ------ | ------- | --------- |
+| Records   | —      | Read    | Full CRUD |
+| Dashboard | Read   | Read    | Read      |
+| Users     | —      | —       | Full      |
+
+---
+
+## Error Handling
+
+All routes are wrapped in a global error handler. Errors always return this shape:
 
 ```json
 {
-  "name": "Viewer One",
-  "email": "viewer1@example.com",
-  "password": "password123"
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR"
+  }
 }
 ```
 
-- Expect: `201`, returns `token`, `user.role = VIEWER`
+Zod validation errors return 400 with field-level details. Auth errors return 401/403. Not found returns 404. No stack traces are ever exposed.
 
-2. `POST /api/auth/login`
+---
 
-- Body:
+## Running Tests
 
-```json
-{ "email": "viewer1@example.com", "password": "password123" }
+Make sure the server is running first:
+
+```bash
+npm run dev          # terminal 1
+npm test             # terminal 2
 ```
 
-- Expect: `200`, returns `token`
+The integration suite covers:
 
-3. Negative
+1. Register + login returns JWT
+2. Viewer blocked from record creation
+3. Analyst can read but not create records
+4. Admin full CRUD on records
+5. Dashboard summary returns correct aggregation shape
+6. Soft-deleted records hidden from GET and list
 
-- Duplicate register -> `409`
-- Wrong password -> `401`
-- Invalid email/body -> `400`
+---
 
-**Records** 4. `POST /api/records` (ADMIN token)
+## Assumptions
 
-- Body:
+- Single-tenant system (no multi-org support)
+- Dates are accepted and returned as ISO 8601 strings
+- Pagination defaults to page 1, limit 10
+- All monetary amounts are in a single currency (no currency field)
 
-```json
-{
-  "amount": 1000,
-  "type": "INCOME",
-  "category": "Salary",
-  "date": "2026-04-02T00:00:00.000Z",
-  "notes": "test income"
-}
-```
+---
 
-- Expect: `201`
+## What I'd Add With More Time
 
-5. `GET /api/records?page=1&limit=10` (ADMIN or ANALYST)
-
-- Expect: `200`, `items` + `meta`
-
-6. `GET /api/records/{id}` (ADMIN or ANALYST)
-
-- Expect: `200`
-
-7. `PATCH /api/records/{id}` (ADMIN)
-
-- Body:
-
-```json
-{ "notes": "updated note" }
-```
-
-- Expect: `200`
-
-8. `DELETE /api/records/{id}` (ADMIN)
-
-- Expect: `200` (soft delete)
-
-9. Soft delete verification
-
-- `GET /api/records/{id}` -> `404`
-- `GET /api/records` -> deleted row not present
-
-10. RBAC negative
-
-- `POST /api/records` with ANALYST/VIEWER -> `403`
-- `GET /api/records` with VIEWER -> `403`
-
-**Dashboard** (VIEWER + ANALYST + ADMIN all allowed) 11. `GET /api/dashboard/summary` -> `200` 12. `GET /api/dashboard/recent?limit=5` -> `200` 13. `GET /api/dashboard/trends?months=6` -> `200`
-
-**Users (Admin only)** 14. `GET /api/users` (ADMIN) -> `200` 15. `PATCH /api/users/{id}/role` (ADMIN)
-
-- Body:
-
-```json
-{ "role": "ANALYST" }
-```
-
-- Expect: `200`
-
-16. `PATCH /api/users/{id}/status` (ADMIN)
-
-- Body:
-
-```json
-{ "status": "INACTIVE" }
-```
-
-- Expect: `200`
-
-17. RBAC negative on user routes
-
-- Any above with ANALYST/VIEWER token -> `403`
-
-Base URL:
-
-- `http://localhost:3000`
-
-Auth header format:
-
-- `Authorization: Bearer <token>`
+- Refresh token rotation
+- Rate limiting on auth endpoints
+- OpenAPI/Swagger documentation
+- Record restore endpoint (undo soft delete)
+- Audit log for admin actions
+- CI pipeline with automated test runs
