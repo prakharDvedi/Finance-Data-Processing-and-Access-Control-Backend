@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { isProduction } from "./config";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -10,6 +11,6 @@ export const prisma =
     log: ["error", "warn"],
   });
 
-if (process.env.NODE_ENV !== "production") {
+if (!isProduction) {
   globalForPrisma.prisma = prisma;
 }

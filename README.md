@@ -4,7 +4,7 @@ API Documentation (Swagger UI): https://petstore.swagger.io/?url=https://raw.git
 
 Roadmap: [ROADMAP.md](ROADMAP.md)
 
-
+  
 Backend API for managing financial records with role-based access control, dashboard analytics, and JWT authentication.
 
 Built as part of an intern assignment.

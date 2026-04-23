@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { config } from "./config";
 
 export type JwtUser = {
   id: string;
@@ -7,14 +8,6 @@ export type JwtUser = {
   status: "ACTIVE" | "INACTIVE";
   name: string;
 };
-
-function getSecret(): string {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) throw new Error("JWT_SECRET not set");
-  return secret;
-}
-
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1h";
 
 export function signJwt(user: JwtUser) {
   return jwt.sign(
@@ -25,11 +18,11 @@ export function signJwt(user: JwtUser) {
       status: user.status,
       name: user.name,
     },
-    getSecret(),
-    { expiresIn: JWT_EXPIRES_IN },
+    config.JWT_SECRET,
+    { expiresIn: config.JWT_EXPIRES_IN },
   );
 }
 
 export function verifyToken(token: string) {
-  return jwt.verify(token, getSecret()) as jwt.JwtPayload;
+  return jwt.verify(token, config.JWT_SECRET) as jwt.JwtPayload;
 }
