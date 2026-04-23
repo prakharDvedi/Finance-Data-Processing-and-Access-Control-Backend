@@ -1,6 +1,8 @@
-# Zorvyn — Financial Records Management API with RBAC
+#Financial Records Management API with RBAC
 
 API Documentation (Swagger UI): https://petstore.swagger.io/?url=https://raw.githubusercontent.com/prakharDvedi/Finance-Data-Processing-and-Access-Control-Backend/main/finance-data/public/openapi.json
+
+Roadmap: [ROADMAP.md](ROADMAP.md)
 
 
 Backend API for managing financial records with role-based access control, dashboard analytics, and JWT authentication.
